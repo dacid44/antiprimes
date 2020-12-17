@@ -1,37 +1,53 @@
 import pycuda.gpuarray as gpuarray
-# import pycuda.cumath as cumath
-from pycuda.elementwise import ElementwiseKernel
 from pycuda.compiler import SourceModule
 import pycuda as cuda
 import pycuda.autoinit
 import numpy as np
 from numba import jit, njit, prange
 from time import time
-from collections import deque
 
-# BATCH_SIZE = 1024
-BATCH_SIZE = 98304
-# GRID_SIZE = 16384
-GRID_SIZE = 512
-# GRID_SIZE = 24576
-# GRID_SIZE = 49152
-# GRID_SIZE = 1
+BATCH_SIZE = 196608 # // 2
+GRID_SIZE = 256
 
-modulo = ElementwiseKernel("unsigned int *x, unsigned int *y, int z", "x[i] = y[(i % z)] % x[i]", "modulo")
+limit = 100000000 # limit = int(input('Limit: '))
+
 mod_full = SourceModule("""
-__global__ void mod_full(unsigned int *x, unsigned int *y, bool *z, unsigned int *stop, int width, unsigned int rows, int size) {
+__global__ void mod_full(unsigned int *x, unsigned int *y, unsigned {0} *z, unsigned int *stop, int width, short size) {{
   const int n = blockIdx.x * 1024 + threadIdx.x;
-  const int s = n * width + blockIdx.y;
-  if (n < width) {
-    for (int i = blockIdx.y * width + n; i / width < rows && i / width < stop[n]; i += size * width) {
-      z[i] = (y[n] % x[i]) == 0;
-    }
-  }
-}
-""").get_function("mod_full")
+  const int s = blockIdx.y * width + n;
+  if (n < width) {{
+    for (int i = blockIdx.y * width + n; i / width < stop[n] - 1; i += size * width) {{
+      z[s] += (y[n] % x[i]) == 0;
+    }}
+  }}
+}}
+""".format('short' if limit <= 1000000000 else 'int')).get_function("mod_full")
+mod_reduced = SourceModule("""
+__global__ void mod_reduced(unsigned int *x, unsigned int *y, unsigned {0} *z, unsigned int *stop, int width) {{
+  const int n = blockIdx.x * 1024 + threadIdx.x;
+  const int s = blockIdx.y * width + n;
+  const unsigned short size = gridDim.y;
+  if (n < width) {{
+    for (int i = blockIdx.y; i < stop[n] - 1; i += size) {{
+      z[s] += (y[n] % x[i]) == 0;
+    }}
+  }}
+}}
+""".format('short' if limit <= 1000000000 else 'int')).get_function("mod_reduced")
+mod_gen = SourceModule("""
+__global__ void mod_gen(unsigned int *x, unsigned {0} *y, unsigned int *stop, int width) {{
+  const int n = blockIdx.x * 1024 + threadIdx.x;
+  const int s = blockIdx.y * width + n;
+  const unsigned short size = gridDim.y;
+  if (n < width) {{
+    for (int i = blockIdx.y + 1; i < stop[n] - 1; i += size) {{
+      y[s] += (x[n] % i) == 0;
+    }}
+  }}
+}}
+""".format('short' if limit <= 1000000000 else 'int')).get_function("mod_gen")
+n_data_type = np.uint16 if limit <= 1000000000 else np.uint32
 
-
-limit = 500000 # limit = int(input('Limit: '))
 start_time = time()
 
 @njit(parallel=True)
@@ -44,41 +60,32 @@ def fill_rows(start, stop, width):
 most = np.uint32(0)
 antiprimes = []
 
-@jit(parallel=True, forceobj=True)
+@njit(parallel=True)
+def count_factors(results):
+    to_return = np.zeros(results.shape[1], dtype=np.uint32)
+    for n in prange(results.shape[1]):
+        to_return[n] = np.sum(results[:, n])
+        to_return[n] *= 2
+    return to_return
+
 def test_factor_batch(batch, mem):
     sqrts = np.sqrt(batch)
     ceils = np.ceil(sqrts).astype(dtype=np.uint32)
-    test_mat = fill_rows(1, np.uint32(np.ceil(sqrts[-1])), batch.size)
-    mat_gpu = gpuarray.to_gpu(test_mat, allocator=mem.allocate)
-    # res_mat = np.zeros((GRID_SIZE, batch.size), dtype=np.uint16)
-    res_mat = np.zeros_like(test_mat, dtype=np.bool_)
+    #test_mat = fill_rows(1, ceils[-1], batch.size)
+    #test_mat = np.arange(1, ceils[-1], dtype=np.uint32)
+    #mat_gpu = gpuarray.to_gpu(test_mat, allocator=mem.allocate)
+    res_mat = np.zeros((min(GRID_SIZE, ceils[-1] - 1), batch.size), dtype=n_data_type)
     res_gpu = gpuarray.to_gpu(res_mat, allocator=mem.allocate)
-    # modulo(mat_gpu, gpuarray.to_gpu(batch, mem.allocate), batch.size)
-    mod_full(mat_gpu, gpuarray.to_gpu(batch, mem.allocate), res_gpu, gpuarray.to_gpu(ceils, allocator=mem.allocate),
-             np.uint32(batch.size), np.uint32(test_mat.shape[0]), np.uint32(GRID_SIZE),
-             block=(1024, 1, 1), grid=(BATCH_SIZE // 1024 + 1, GRID_SIZE))
+    #mod_reduced(mat_gpu, gpuarray.to_gpu(batch, mem.allocate), res_gpu, gpuarray.to_gpu(ceils, allocator=mem.allocate),
+    #            np.uint32(batch.size), block=(1024, 1, 1), grid=(BATCH_SIZE // 1024 + 1, GRID_SIZE))
+    mod_gen(gpuarray.to_gpu(batch, mem.allocate), res_gpu, gpuarray.to_gpu(ceils, allocator=mem.allocate),
+            np.uint32(batch.size), block=(1024, 1, 1), grid=(BATCH_SIZE // 1024 + 1, GRID_SIZE))
     res_mat = res_gpu.get()
-    # del mat_gpu
-    num_factors = np.zeros(batch.size, dtype=np.uint32)
-    for n in prange(0, batch.size):
-        if batch[n] != 1:
-            # count_facs = res_mat[:ceils[n] - 1, n]
-            num_factors[n] = np.sum(res_mat[:, n])
-            # num_factors[n] = np.sum(count_facs)
-            num_factors[n] *= 2
+    #del mat_gpu
+    del res_gpu
+    num_factors = count_factors(res_mat)
     num_factors += np.equal(sqrts, ceils)
     return num_factors
-
-'''
-run_factors = SourceModule("""
-    __global__ void run_factors() {
-    
-    }
-""")
-'''
-'''
-def test_factor_batch_gpu(batch, mem):
-'''
 
 def run_factor_batch(batch, mem):
     global most

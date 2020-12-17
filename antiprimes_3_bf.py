@@ -11,7 +11,7 @@ from collections import deque
 
 BATCH_SIZE = 5000
 
-limit = 1000000 # limit = int(input('Limit: '))
+limit = 5000000 # limit = int(input('Limit: '))
 start_time = time()
 
 @njit(parallel=True)
