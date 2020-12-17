@@ -19,20 +19,19 @@ GRID_SIZE = 512
 
 modulo = ElementwiseKernel("unsigned int *x, unsigned int *y, int z", "x[i] = y[(i % z)] % x[i]", "modulo")
 mod_full = SourceModule("""
-__global__ void mod_full(unsigned int *x, unsigned int *y, unsigned int *z, unsigned int *stop, unsigned int width, unsigned int rows, unsigned int size) {
+__global__ void mod_full(unsigned int *x, unsigned int *y, bool *z, unsigned int *stop, int width, unsigned int rows, int size) {
   const int n = blockIdx.x * 1024 + threadIdx.x;
-  // const int s = n * width + blockIdx.y;
+  const int s = n * width + blockIdx.y;
   if (n < width) {
     for (int i = blockIdx.y * width + n; i / width < rows && i / width < stop[n]; i += size * width) {
-      // z[s] += (y[n] % x[i]) == 0;
-      x[i] = (y[n] % x[i]) == 0;
+      z[i] = (y[n] % x[i]) == 0;
     }
   }
 }
 """).get_function("mod_full")
 
 
-limit = 16 # limit = int(input('Limit: '))
+limit = 500000 # limit = int(input('Limit: '))
 start_time = time()
 
 @njit(parallel=True)
@@ -45,24 +44,20 @@ def fill_rows(start, stop, width):
 most = np.uint32(0)
 antiprimes = []
 
-# @jit(parallel=True, forceobj=True)
+@jit(parallel=True, forceobj=True)
 def test_factor_batch(batch, mem):
     sqrts = np.sqrt(batch)
     ceils = np.ceil(sqrts).astype(dtype=np.uint32)
     test_mat = fill_rows(1, np.uint32(np.ceil(sqrts[-1])), batch.size)
     mat_gpu = gpuarray.to_gpu(test_mat, allocator=mem.allocate)
-    res_mat = np.zeros((min(GRID_SIZE, test_mat.shape[0]), batch.size), dtype=np.uint16)
-    # res_mat = np.zeros_like(test_mat, dtype=np.bool_)
+    # res_mat = np.zeros((GRID_SIZE, batch.size), dtype=np.uint16)
+    res_mat = np.zeros_like(test_mat, dtype=np.bool_)
     res_gpu = gpuarray.to_gpu(res_mat, allocator=mem.allocate)
     # modulo(mat_gpu, gpuarray.to_gpu(batch, mem.allocate), batch.size)
     mod_full(mat_gpu, gpuarray.to_gpu(batch, mem.allocate), res_gpu, gpuarray.to_gpu(ceils, allocator=mem.allocate),
              np.uint32(batch.size), np.uint32(test_mat.shape[0]), np.uint32(GRID_SIZE),
              block=(1024, 1, 1), grid=(BATCH_SIZE // 1024 + 1, GRID_SIZE))
-    print(batch)
-    print(test_mat)
-    print(mat_gpu.get())
     res_mat = res_gpu.get()
-    print(res_mat)
     # del mat_gpu
     num_factors = np.zeros(batch.size, dtype=np.uint32)
     for n in prange(0, batch.size):
@@ -73,6 +68,17 @@ def test_factor_batch(batch, mem):
             num_factors[n] *= 2
     num_factors += np.equal(sqrts, ceils)
     return num_factors
+
+'''
+run_factors = SourceModule("""
+    __global__ void run_factors() {
+    
+    }
+""")
+'''
+'''
+def test_factor_batch_gpu(batch, mem):
+'''
 
 def run_factor_batch(batch, mem):
     global most
