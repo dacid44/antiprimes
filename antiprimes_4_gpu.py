@@ -10,8 +10,9 @@ BATCH_MULTIPLIER = 64
 BATCH_SIZE = int(196608 * BATCH_MULTIPLIER)
 GRID_SIZE = int(256 // BATCH_MULTIPLIER)
 GEN_TESTS = False
+PRINT_FILE = True
 
-limit = 100000000  # limit = int(input('Limit: '))
+limit = 1000000000000  # limit = int(input('Limit: '))
 
 # noinspection PyStringFormat
 mod_gen = SourceModule("""
@@ -85,8 +86,9 @@ def run_factor_batch(batch, mem):
 
 def file_print(print_obj, out_file='out.txt'):
     print(print_obj)
-    with open(out_file, 'a') as f:
-        print(print_obj, file=f)
+    if PRINT_FILE:
+        with open(out_file, 'a') as f:
+            print(print_obj, file=f)
 
 
 gpu_mem = cuda.tools.DeviceMemoryPool()
