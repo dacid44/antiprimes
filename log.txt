@@ -1,0 +1,152 @@
+printThread started
+cutoff 1: 288675
+cutoff 2: 408248
+cutoff 3: 500000
+cutoff 4: 577350
+cutoff 5: 645497
+cutoff 6: 707107
+cutoff 7: 763763
+cutoff 8: 816497
+cutoff 9: 866026
+cutoff 10: 912871
+cutoff 11: 957428
+process p0 started
+p0: 2
+p0: 4
+p0: 6
+p0: 12
+p0: 24
+p0: 36
+p0: 48
+p0: 60
+p0: 120
+p0: 180
+p0: 240
+p0: 360
+p0: 720
+p0: 840
+p0: 1260
+p0: 1680
+p0: 2520
+p0: 5040
+p0: 7560
+p0: 10080
+process p1 started
+p0: 15120
+process p2 started
+p0: 20160
+process p3 started
+p0: 25200
+process p4 started
+p0: 27720
+process p5 started
+process p6 started
+process p7 started
+process p8 started
+process p9 started
+process p10 started
+p0: 45360
+p6: 708588
+process p11 started
+p1: 294912
+p0: 50400
+p1: 295680
+p5: 648000
+p3: 504210
+p0: 55440
+p2: 414720
+p10: 914760
+p2: 415800
+p11: 960000
+p7: 768000
+p1: 302400
+p11: 960960
+p0: 83160
+p3: 510510
+p4: 589824
+p4: 591360
+p0: 110880
+p6: 720000
+p3: 518400
+p6: 720720
+p7: 777600
+p8: 829440
+p5: 665280
+p8: 831600
+p3: 529200
+p1: 332640
+p9: 884736
+p4: 604800
+p9: 887040
+p0: 166320
+p3: 554400
+p0: 221760
+p7: 806400
+p11: 997920
+process p11 finished
+got result 0
+process p9 finished
+got result 1
+process p7 finished
+got result 2
+process p5 finished
+got result 3
+process p10 finished
+got result 4
+p2: 498960
+process p6 finished
+got result 5
+process p3 finished
+got result 6
+process p8 finished
+got result 7
+process p2 finished
+got result 8
+process p4 finished
+got result 9
+process p1 finished
+got result 10
+p0: 277200
+process p0 finished
+got result 11
+[960000, 960960, 997920, 884736, 887040, 768000, 777600, 806400, 648000, 665280, 914760, 708588, 720000, 720720, 504210, 510510, 518400, 529200, 554400, 829440, 831600, 414720, 415800, 498960, 589824, 591360, 604800, 294912, 295680, 302400, 332640, 2, 4, 6, 12, 24, 36, 48, 60, 120, 180, 240, 360, 720, 840, 1260, 1680, 2520, 5040, 7560, 10080, 15120, 20160, 25200, 27720, 45360, 50400, 55440, 83160, 110880, 166320, 221760, 277200]
+2
+4
+6
+12
+24
+36
+48
+60
+120
+180
+240
+360
+720
+840
+1260
+1680
+2520
+5040
+7560
+10080
+15120
+20160
+25200
+27720
+45360
+50400
+55440
+83160
+110880
+166320
+221760
+277200
+332640
+498960
+554400
+665280
+720720
+[2, 4, 6, 12, 24, 36, 48, 60, 120, 180, 240, 360, 720, 840, 1260, 1680, 2520, 5040, 7560, 10080, 15120, 20160, 25200, 27720, 45360, 50400, 55440, 83160, 110880, 166320, 221760, 277200, 332640, 498960, 554400, 665280, 720720]
+printThread stopped
+Time: 107.3648

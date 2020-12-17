@@ -1,0 +1,45 @@
+- read in primes
+- keep track of the antiprimes found so far
+- keep track of the most factors a number has (starting at 0)
+- for every number from 1 to the limit (inclusive):
+    * get the number of factors it has
+      * get the number's prime factorization
+      - if the number has no prime factors (it is 1) return 0
+      * return 0 if the number's prime factors are not consecutive
+      - start a counter
+      * test if the number is a perfect square
+        return True if all of the elements in the number's prime factorization
+                have even powers
+      - for every number from 1 to the ceil of the number's square root
+              (exclusive):
+          - increment the counter if the number is divisible by the iterating
+                  number
+      - multiply the counter by 2
+      - if the number is a perfect square, increment the counter
+      - return the counter
+    - if the number has the most factors so far:
+        - add the number to the list of antiprimes
+        - update the new highest number of factors
+- return the list of antiprimes found
+
+
+- read in primes (to an array?)
+- keep track of the antiprimes found so far
+- keep track of the most factors a number has (starting at 0)
+- for every number from 2 to the limit (inclusive):
+    * get the number of factors it has
+      * get the number's prime factorization
+      * return 0 if the number has inefficient prime factors
+      * return 0 if the number's prime factors are not consecutive
+      - make an array range from 1 to the ceil of the number's square root
+              (exclusive)
+      - mod the number by the array
+      * count the number of zeroes
+        - return the length of the array minus the number of nonzero elements
+      - multiply that by 2
+      - add 1 if the number is a perfect square
+      - return that number
+    - if the number has the most factors so far:
+        - add the number to the list of antiprimes
+        - update the new highest number of factors
+- return the list of antiprimes found
