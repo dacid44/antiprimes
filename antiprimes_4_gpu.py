@@ -11,7 +11,7 @@ BATCH_SIZE = int(196608 * BATCH_MULTIPLIER)
 GRID_SIZE = int(256 // BATCH_MULTIPLIER)
 GEN_TESTS = False
 
-limit = 1000000000  # limit = int(input('Limit: '))
+limit = 100000000  # limit = int(input('Limit: '))
 
 # noinspection PyStringFormat
 mod_gen = SourceModule("""
@@ -20,13 +20,13 @@ __global__ void mod_gen({1}unsigned int *y, unsigned {0} *z, unsigned int *stop,
   const int s = blockIdx.y * width + n;
   const unsigned short size = gridDim.y;
   if (n < width) {{
-    for (int i = blockIdx.y + 1; i < stop[n] - 1; i += size) {{
-      z[s] += (y[n] % {2}) == 0;
+    for (int i = blockIdx.y{2}; i < stop[n]{3}; i += size) {{
+      z[s] += (y[n] % {4}) == 0;
     }}
   }}
 }}
 """.format('short' if limit <= 1000000000 else 'int',
-           *(('', 'i') if GEN_TESTS else ('unsigned int *x, ', 'x[i]'))
+           *(('', ' + 1', '', 'i') if GEN_TESTS else ('unsigned int *x, ', '', ' - 1', 'x[i]'))
            )).get_function("mod_gen")
 n_data_type = np.uint16 if limit <= 1000000000 else np.uint32
 
@@ -64,14 +64,28 @@ def test_factor_batch(batch, mem):
     num_factors += np.equal(sqrts, ceils)
     return num_factors
 
+@njit(parallel=True)
+def is_antiprime(t_most, candidates, num_factors):
+    is_possible = num_factors > t_most
+    to_return = []
+    for num, facs in zip(candidates[is_possible], num_factors[is_possible]):
+        if facs > t_most:
+            to_return.append(num)
+            t_most = facs
+    return t_most, to_return
+
 def run_factor_batch(batch, mem):
     global most
-    num_factors = test_factor_batch(batch, mem)
-    for i in range(batch.size):
-        if num_factors[i] > most:
-            antiprimes.append(batch[i])
-            most = num_factors[i]
-            print(batch[i])
+    new_most, valid = is_antiprime(most, batch, test_factor_batch(batch, mem))
+    if valid:
+        antiprimes.extend(valid)
+        most = new_most
+        file_print(valid)
+
+def file_print(print_obj, out_file='out.txt'):
+    print(print_obj)
+    with open(out_file, 'a') as f:
+        print(print_obj, file=f)
 
 
 gpu_mem = cuda.tools.DeviceMemoryPool()
@@ -79,5 +93,5 @@ for n in range(1, limit + 1, BATCH_SIZE):
     n_max = limit + 1 if limit < n + BATCH_SIZE else n + BATCH_SIZE
     run_factor_batch(np.arange(n, n_max, dtype=np.uint32), gpu_mem)
 
-print(antiprimes)
-print(time() - start_time)
+file_print(antiprimes)
+file_print(time() - start_time)
